@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from config import block_size, vocab_size, n_layer, n_head, n_embd, dropout
+from config import block_size, n_layers, n_heads, n_embd, dropout
 
 class GPTConfig:
-    def __init__(self):
+    def __init__(self, vocab_size, block_size, n_layers, n_heads, n_embd, dropout):
         self.vocab_size = vocab_size
         self.block_size = block_size
-        self.n_layer = n_layer
-        self.n_head = n_head
+        self.n_layers = n_layers
+        self.n_heads = n_heads
         self.n_embd = n_embd
         self.dropout = dropout
 
@@ -67,8 +67,8 @@ class FeedForward(nn.Module):
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
-        head_size = config.n_embd // config.n_head
-        self.sa = MultiHeadAttention(config.n_head, head_size, config)
+        head_size = config.n_embd // config.n_heads
+        self.sa = MultiHeadAttention(config.n_heads, head_size, config)
         self.ffwd = FeedForward(config)
         self.ln1 = nn.LayerNorm(config.n_embd)
         self.ln2 = nn.LayerNorm(config.n_embd)
@@ -84,7 +84,7 @@ class GPTLanguageModel(nn.Module):
         self.token_embedding = nn.Embedding(config.vocab_size, config.n_embd)
         self.position_embedding = nn.Embedding(config.block_size, config.n_embd)
         self.blocks = nn.Sequential()
-        for i in range(config.n_layer):
+        for i in range(config.n_layers):
             self.blocks.add_module(f"block_{i}", Block(config))
         self.ln_f = nn.LayerNorm(config.n_embd)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size)
@@ -106,11 +106,12 @@ class GPTLanguageModel(nn.Module):
         loss = F.cross_entropy(logits.view(B * T, C), targets.view(B * T))
         return logits, loss
     
-    def generate(self, idx, max_new_tokens):
+    def generate(self, idx, max_new_tokens, temperature=1.0):
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -self.config.block_size:]
             logits, _ = self(idx_cond)
             logits = logits[:, -1, :]
+            logits = logits / temperature
             probs = F.softmax(logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
             idx = torch.cat((idx, next_token), dim=1)

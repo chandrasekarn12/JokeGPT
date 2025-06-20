@@ -15,5 +15,6 @@ dropout = 0.1
 
 # Training parameters
 learning_rate = 0.001
-max_iters = 2000
+max_iters = 15000
 eval_interval = 100
+eval_iters = 5
