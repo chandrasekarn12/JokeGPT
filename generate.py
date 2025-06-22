@@ -36,7 +36,7 @@ model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
 # Generate inferences
-def generate_text(prompt = "", max_new_tokens = 50):
+def generate_text(prompt = "", max_new_tokens = 10):
     if prompt:
         context = torch.tensor([encode(prompt)], dtype=torch.long, device=device)
     else:
