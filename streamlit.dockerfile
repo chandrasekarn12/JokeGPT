@@ -1,13 +1,15 @@
 # Base image
-FROM python:3.11.8-slim
+FROM python:3.11-slim
+
 WORKDIR /app
+
 # Install python dependencies/ used cached 
 RUN pip install --no-cache-dir streamlit requests
 
 COPY demo.py .
 
 # Backend URL
-ENV BACKEND_URL=https://jokegpt-l9op.onrender.com
+ENV BACKEND_URL=https://jokegpt-api.onrender.com
 
 # Startup
 EXPOSE 8080
