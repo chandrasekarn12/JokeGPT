@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir streamlit requests
 COPY demo.py .
 
 # Backend URL
-ENV BACKEND_URL=https://jokegpt-api.onrender.com
+ENV BACKEND_URL=https://jokegpt-api-gcp-892107215241.us-central1.run.app/
 
 # Startup
 EXPOSE 8080
