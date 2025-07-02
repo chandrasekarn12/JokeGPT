@@ -1,5 +1,4 @@
 import torch
-import pickle
 import os
 from transformers import GPT2TokenizerFast
 from config import DATA_DIR, TOKENIZER_DIR, n_layers, n_heads, n_embd, dropout
