@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.ipynb_checkpoints
+
+# Virtual-env / Poetry
+.venv/
+env/
+venv/
+
+# Data & checkpoints (large, regenerateable)
+data/*.bin
+data/*.pt
+data/*.npy
+data/tokenizer_files/
+loss_curve.png
+
+# OS noise
+.DS_Store
+Thumbs.db

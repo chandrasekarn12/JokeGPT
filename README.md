@@ -56,3 +56,21 @@ JokeGPT/
 │   ├── meta.pkl               # Vocabulary + encoders
 │   ├── checkpoint.pt          # Final trained weights
 │   └── loss_curve.png         # Training loss visualization
+
+## Quick Start
+
+```bash
+git clone https://github.com/<your-handle>/jokegpt
+cd jokegpt
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+
+# 1) Tokenise jokes (creates data/train.bin, val.bin)
+python prepare_tokenizer_data.py
+
+# 2) Train tiny GPT-2 (2 layers, 256 emb, 128 ctx)
+python train.py
+
+# 3) Generate a joke
+python generate.py
+

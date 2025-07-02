@@ -1,11 +1,13 @@
-import os, pickle, time, math, torch
+import os, time, torch
 import numpy as np
 from torch.nn import functional as F
+from torch.cuda.amp import GradScaler, autocast
 import matplotlib.pyplot as plt
+from transformers import GPT2TokenizerFast
 from config import (
-    DATA_DIR, TRAIN_FILE, VAL_FILE, META_FILE,
-    block_size, batch_size, learning_rate, max_iters, eval_interval, 
-    eval_iters, n_layers, n_heads, n_embd, dropout
+    DATA_DIR, TRAIN_FILE, VAL_FILE, TOKENIZER_DIR,
+    block_size, batch_size,
+    learning_rate, max_iters, eval_interval, eval_iters
 )
 from modelGPT2 import GPT2, GPT2Config
 
@@ -17,13 +19,14 @@ else:
 # Load tokenized data and vocab
 train_data = np.memmap(TRAIN_FILE, dtype=np.uint16, mode='r')
 val_data = np.memmap(VAL_FILE, dtype=np.uint16, mode='r')
-with open(META_FILE, 'rb') as f:
-    meta = pickle.load(f)
-vocab_size = meta['vocab_size']
+tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
 
-config = GPT2Config(vocab_size=vocab_size)
+# Make model and optimizer
+config = GPT2Config(vocab_size = tokenizer.vocab_size)
 model = GPT2(config).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_iters, eta_min=0.00001)
+scaler = torch.amp.GradScaler(device)
 
 def get_batch(split):
     data = train_data if split == "train" else val_data
@@ -31,13 +34,12 @@ def get_batch(split):
     x_list = []
     y_list = []
     for i in ix:
-        x_item = torch.from_numpy(data[i : i + block_size].copy()).long()
-        y_item = torch.from_numpy(data[i + 1 : i + 1 + block_size].copy()).long()
-        x_list.append(x_item)
-        y_list.append(y_item)
-    x = torch.stack(x_list)
-    y = torch.stack(y_list)
-    return x.to(device), y.to(device)
+        chunk = torch.from_numpy(data[i : i + block_size + 1].copy()).long()
+        x_list.append(chunk[:-1])
+        y_list.append(chunk[1:])
+    x = torch.stack(x_list).to(device)
+    y = torch.stack(y_list).to(device)
+    return x, y
 
 @torch.no_grad()
 def estimate_loss(model):
@@ -65,8 +67,10 @@ for iter in range(1, max_iters + 1):
     logits, loss = model(xb, yb)
 
     optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
+    scheduler.step()
 
     # Logging and eval
     if iter % eval_interval == 0:
@@ -76,7 +80,6 @@ for iter in range(1, max_iters + 1):
         torch.save({
             'model_state_dict': model.state_dict(),
             'config': config.__dict__,
-            'meta': meta
         }, checkpoint_path)
         print(f"Model checkpoint saved to {checkpoint_path}")
 
@@ -88,7 +91,6 @@ final_checkpoint_path = os.path.join(DATA_DIR, 'checkpoint.pt')
 torch.save({
     'model_state_dict': model.state_dict(),
     'config': config.__dict__,
-    'meta': meta
 }, final_checkpoint_path)
 print(f"Final model checkpoint saved to {final_checkpoint_path}")
 
