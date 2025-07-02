@@ -2,7 +2,6 @@
 DATA_DIR = "data"
 TRAIN_FILE = f"{DATA_DIR}/train.bin"
 VAL_FILE = f"{DATA_DIR}/val.bin"
-TOKENIZER_DIR = f"{DATA_DIR}/tokenizer_files"
 
 # GPT model parameters
 block_size = 128

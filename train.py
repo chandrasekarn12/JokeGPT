@@ -5,7 +5,7 @@ from torch.cuda.amp import GradScaler, autocast
 import matplotlib.pyplot as plt
 from transformers import GPT2TokenizerFast
 from config import (
-    DATA_DIR, TRAIN_FILE, VAL_FILE, TOKENIZER_DIR,
+    DATA_DIR, TRAIN_FILE, VAL_FILE,
     block_size, batch_size,
     learning_rate, max_iters, eval_interval, eval_iters
 )
@@ -19,7 +19,7 @@ else:
 # Load tokenized data and vocab
 train_data = np.memmap(TRAIN_FILE, dtype=np.uint16, mode='r')
 val_data = np.memmap(VAL_FILE, dtype=np.uint16, mode='r')
-tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 # Make model and optimizer
 config = GPT2Config(vocab_size = tokenizer.vocab_size)

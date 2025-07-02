@@ -1,7 +1,7 @@
 import torch
 import os
 from transformers import GPT2TokenizerFast
-from config import DATA_DIR, TOKENIZER_DIR, n_layers, n_heads, n_embd, dropout
+from config import DATA_DIR
 from modelGPT2 import GPT2, GPT2Config
 
 if torch.cuda.is_available():
@@ -9,7 +9,7 @@ if torch.cuda.is_available():
 else:
     device = 'cpu'
 
-tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 # Load model and vocab
 checkpoint_path = os.path.join(DATA_DIR, 'checkpoint.pt')

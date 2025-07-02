@@ -5,10 +5,10 @@ import os
 import torch
 from torch.nn.utils.rnn import pad_sequence
 import re
-from config import DATA_DIR, TOKENIZER_DIR, TRAIN_FILE, VAL_FILE, block_size
+from config import DATA_DIR, TRAIN_FILE, VAL_FILE, block_size
 
 os.makedirs(DATA_DIR, exist_ok=True)
-tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
 df = pd.read_csv(os.path.join(DATA_DIR, 'reddit_dadjokes.csv'))
