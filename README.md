@@ -56,6 +56,7 @@ JokeGPT/
 │   ├── meta.pkl               # Vocabulary + encoders
 │   ├── checkpoint.pt          # Final trained weights
 │   └── loss_curve.png         # Training loss visualization
+```
 
 ## Quick Start
 
