@@ -3,7 +3,7 @@ import torch
 from fastapi import FastAPI, Query
 from transformers import GPT2TokenizerFast
 from modelGPT2 import GPT2, GPT2Config
-from config import DATA_DIR, TOKENIZER_DIR
+from config import DATA_DIR
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -12,7 +12,7 @@ else:
 
 checkpoint_path = os.path.join(DATA_DIR, "checkpoint.pt")
 checkpoint = torch.load(checkpoint_path, map_location=device)
-tokenizer = GPT2TokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 config = GPT2Config(tokenizer.vocab_size)
 model = GPT2(config).to(device)
