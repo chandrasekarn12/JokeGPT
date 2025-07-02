@@ -103,5 +103,3 @@ $ gcloud run deploy jokegpt-api --image us-central1-docker.pkg.dev/<PROJECT>/jok
 2. **Weights‑and‑Biases logging** – experiment tracking.
 3. **GitHub Actions CI/CD** – auto‑publish new images.
 4. **Better dataset filtering** – knock out low‑quality jokes.
-
-PRs welcome – just open an issue or hit me up on X/Twitter @your‑handle.
