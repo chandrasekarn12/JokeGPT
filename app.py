@@ -2,7 +2,7 @@ import os
 import torch
 from fastapi import FastAPI, Query
 from transformers import GPT2TokenizerFast
-from modelGPT2 import GPT2, GPT2Config
+from modelGPT1 import GPTLanguageModel, GPTConfig
 from config import DATA_DIR
 
 if torch.cuda.is_available():
@@ -10,12 +10,13 @@ if torch.cuda.is_available():
 else:
     device = "cpu"
 
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 checkpoint_path = os.path.join(DATA_DIR, "checkpoint.pt")
 checkpoint = torch.load(checkpoint_path, map_location=device)
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+saved_config = checkpoint['config']
 
-config = GPT2Config(tokenizer.vocab_size)
-model = GPT2(config).to(device)
+config = GPTConfig(vocab_size=saved_config['vocab_size'], pad_token_id=saved_config['pad_token_id'])
+model = GPTLanguageModel(config).to(device)
 model.load_state_dict(checkpoint["model_state_dict"])
 model.eval()
 
