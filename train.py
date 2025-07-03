@@ -1,15 +1,14 @@
 import os, time, torch
 import numpy as np
 from torch.nn import functional as F
-from torch.cuda.amp import GradScaler, autocast
 import matplotlib.pyplot as plt
-from transformers import GPT2TokenizerFast
+import pickle
 from config import (
     DATA_DIR, TRAIN_FILE, VAL_FILE,
-    block_size, batch_size,
+    block_size, batch_size, n_layers, n_heads, n_embd, dropout,
     learning_rate, max_iters, eval_interval, eval_iters
 )
-from modelGPT2 import GPT2, GPT2Config
+from modelGPT1 import GPTLanguageModel, GPTConfig
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -19,11 +18,19 @@ else:
 # Load tokenized data and vocab
 train_data = np.memmap(TRAIN_FILE, dtype=np.uint16, mode='r')
 val_data = np.memmap(VAL_FILE, dtype=np.uint16, mode='r')
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 # Make model and optimizer
-config = GPT2Config(vocab_size = tokenizer.vocab_size)
-model = GPT2(config).to(device)
+with open(os.path.join(DATA_DIR, 'meta.pkl'), 'rb') as f:
+    meta = pickle.load(f)
+config = GPTConfig(
+    vocab_size=meta['vocab_size'],
+    block_size=block_size,
+    n_layers=n_layers,
+    n_heads=n_heads,
+    n_embd=n_embd,
+    dropout=dropout
+)
+model = GPTLanguageModel(config).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_iters, eta_min=0.00001)
 scaler = torch.amp.GradScaler(device)

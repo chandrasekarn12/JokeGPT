@@ -29,7 +29,7 @@ def health():
 @app.get("/joke")
 def joke(prompt: str = Query("", description="Optional text prompt"),
          temperature: float = Query(1.0, ge=0.2, le=2.0, description="Temperature for text generation"),
-         tokens: int = Query(50, ge=5, le=128, description="Number of tokens to generate")):
+         tokens: int = Query(25, ge=5, le=50, description="Number of tokens to generate")):
     with torch.no_grad():
         ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
         if ids.numel() == 0:

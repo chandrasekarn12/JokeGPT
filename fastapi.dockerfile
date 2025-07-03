@@ -12,8 +12,14 @@ COPY requirements.txt .
 
 # Install python dependencies/ used cached 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install torch==2.2.2+cpu \
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        --retries 10 --timeout 120
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt \
+        --retries 10 --timeout 120
+
 COPY . .
 
 # Startup
