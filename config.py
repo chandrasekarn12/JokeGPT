@@ -4,11 +4,11 @@ TRAIN_FILE = f"{DATA_DIR}/train.bin"
 VAL_FILE = f"{DATA_DIR}/val.bin"
 
 # GPT model parameters
-block_size = 128
+block_size = 256
 batch_size = 32
-n_layers = 2
-n_heads = 2
-n_embd = 128
+n_layers = 6
+n_heads = 6
+n_embd = 384
 dropout = 0.1
 # block_size = 512
 # batch_size = 64
@@ -19,6 +19,6 @@ dropout = 0.1
 
 # Training parameters
 learning_rate = 0.001
-max_iters = 1000
+max_iters = 5000
 eval_interval = 100
 eval_iters = 25
