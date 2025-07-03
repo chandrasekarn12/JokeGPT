@@ -4,13 +4,14 @@ from torch.nn import functional as F
 from config import block_size, n_layers, n_heads, n_embd, dropout
 
 class GPTConfig:
-    def __init__(self, vocab_size, block_size, n_layers, n_heads, n_embd, dropout):
+    def __init__(self, vocab_size, pad_token_id):
         self.vocab_size = vocab_size
         self.block_size = block_size
         self.n_layers = n_layers
         self.n_heads = n_heads
         self.n_embd = n_embd
         self.dropout = dropout
+        self.pad_token_id = pad_token_id
 
 class Head(nn.Module):
     def __init__(self, head_size, config):
@@ -103,7 +104,7 @@ class GPTLanguageModel(nn.Module):
             return logits, None
         
         B, T, C = logits.shape
-        loss = F.cross_entropy(logits.view(B * T, C), targets.view(B * T))
+        loss = F.cross_entropy(logits.view(B * T, C), targets.view(B * T), ignore_index=self.config.pad_token_id)
         return logits, loss
     
     def generate(self, idx, max_new_tokens, temperature=1.0):

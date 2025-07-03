@@ -1,11 +1,12 @@
 import os, time, torch
 import numpy as np
 from torch.nn import functional as F
+from transformers import get_linear_schedule_with_warmup
+from transformers import GPT2TokenizerFast
 import matplotlib.pyplot as plt
-import pickle
 from config import (
     DATA_DIR, TRAIN_FILE, VAL_FILE,
-    block_size, batch_size, n_layers, n_heads, n_embd, dropout,
+    block_size, batch_size,
     learning_rate, max_iters, eval_interval, eval_iters
 )
 from modelGPT1 import GPTLanguageModel, GPTConfig
@@ -18,22 +19,15 @@ else:
 # Load tokenized data and vocab
 train_data = np.memmap(TRAIN_FILE, dtype=np.uint16, mode='r')
 val_data = np.memmap(VAL_FILE, dtype=np.uint16, mode='r')
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
+vocab = tokenizer.get_vocab()
 
 # Make model and optimizer
-with open(os.path.join(DATA_DIR, 'meta.pkl'), 'rb') as f:
-    meta = pickle.load(f)
-config = GPTConfig(
-    vocab_size=meta['vocab_size'],
-    block_size=block_size,
-    n_layers=n_layers,
-    n_heads=n_heads,
-    n_embd=n_embd,
-    dropout=dropout
-)
+config = GPTConfig(vocab_size=len(vocab), pad_token_id=tokenizer.pad_token_id)
 model = GPTLanguageModel(config).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_iters, eta_min=0.00001)
-scaler = torch.amp.GradScaler(device)
+scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=200, num_training_steps=max_iters)
 
 def get_batch(split):
     data = train_data if split == "train" else val_data
@@ -74,9 +68,8 @@ for iter in range(1, max_iters + 1):
     logits, loss = model(xb, yb)
 
     optimizer.zero_grad(set_to_none=True)
-    scaler.scale(loss).backward()
-    scaler.step(optimizer)
-    scaler.update()
+    loss.backward()
+    optimizer.step()
     scheduler.step()
 
     # Logging and eval
