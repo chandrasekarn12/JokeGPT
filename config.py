@@ -6,9 +6,9 @@ VAL_FILE = f"{DATA_DIR}/val.bin"
 # GPT model parameters
 block_size = 256
 batch_size = 32
-n_layers = 6
-n_heads = 6
-n_embd = 384
+n_layers = 8
+n_heads = 8
+n_embd = 512
 dropout = 0.1
 # block_size = 512
 # batch_size = 64
@@ -18,7 +18,11 @@ dropout = 0.1
 # dropout = 0.1
 
 # Training parameters
-learning_rate = 0.001
-max_iters = 5000
-eval_interval = 100
-eval_iters = 25
+learning_rate = 0.003
+max_iters = 10000
+eval_interval = 200
+eval_iters = 40
+
+# Early stopping
+patience = 10
+min_delta = 0.0005

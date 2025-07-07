@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from config import (
     DATA_DIR, TRAIN_FILE, VAL_FILE,
     block_size, batch_size, n_layers, n_heads, n_embd, dropout,
-    learning_rate, max_iters, eval_interval, eval_iters
+    learning_rate, max_iters, eval_interval, eval_iters, patience, min_delta
 )
 from modelGPT1 import GPTLanguageModel, GPTConfig
 
@@ -81,6 +81,9 @@ train_losses = []
 val_losses = []
 iters = []
 
+best_val_loss      = float('inf')
+epochs_no_improve  = 0
+
 # Training loop
 t0 = time.time()
 for iter in range(1, max_iters + 1):
@@ -109,12 +112,28 @@ for iter in range(1, max_iters + 1):
             "eval/val_loss":   losses['val'].item(),
         }, step=iter)
         
-        checkpoint_path = os.path.join(DATA_DIR, f'checkpoint_iter{iter}.pt')
-        torch.save({
-            'model_state_dict': model.state_dict(),
-            'config': config.__dict__,
-        }, checkpoint_path)
-        print(f"Model checkpoint saved to {checkpoint_path}")
+        # Early stopping
+        if losses['val'] < best_val_loss - min_delta:
+            best_val_loss = losses['val']
+            epochs_no_improve = 0
+
+            # Save *best* checkpoint
+            checkpoint_path = os.path.join(DATA_DIR, 'best_checkpoint.pt')
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'config':           config.__dict__,
+                'iter':             iter,
+                'val_loss':         losses['val'],
+            }, checkpoint_path)
+            print(f"  ✓  New best; checkpoint saved to {checkpoint_path}")
+        else:
+            epochs_no_improve += 1
+            print(f"  └─ no improv. for {epochs_no_improve}/{patience}")
+
+            if epochs_no_improve >= patience:
+                print(f"\nEarly stopping at iter {iter} "
+                    f"(best val loss {best_val_loss:.4f}).")
+                break
 
         if iter % (5 * eval_interval) == 0:
             # Push to W and B
