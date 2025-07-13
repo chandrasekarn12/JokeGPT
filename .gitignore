@@ -1,20 +1,34 @@
-# Python
-./__pycache__/
-*.py[cod]
-*.ipynb_checkpoints
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# Virtual-env / Poetry
-.venv/
-env/
-venv/
+# Datasets, checkpoints, and outputs
+data/
+wandb/
+*.pt
+*.bin
+*.pkl
+*.log
+*.csv
+*.png
 
-# Data & checkpoints (large, regenerateable)
-data/*.bin
-data/*.pt
-data/*.npy
-data/tokenizer_files/
-loss_curve.png
+# Docker & deployment
+*.dockerignore
+Dockerfile*
 
-# OS noise
+# IDE and editor folders
+.vscode/
+.idea/
+
+# OS-generated files
 .DS_Store
 Thumbs.db
+
+# Git folders and logs
+.git/
+*.swp
+
+# Ignore containers
+containers/

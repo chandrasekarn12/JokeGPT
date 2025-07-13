@@ -1,44 +1,47 @@
 import torch
 import os
-from transformers import GPT2TokenizerFast
-from config import DATA_DIR
-from modelGPT1 import GPTLanguageModel, GPTConfig
+from config import DATA_DIR, block_size
+from model import GPTLanguageModel, GPTConfig
 
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-
 # Load model and vocab
 checkpoint_path = os.path.join(DATA_DIR, 'checkpoint.pt')
 checkpoint = torch.load(checkpoint_path, map_location=device)
-saved_config = checkpoint['config']
+meta = checkpoint['meta']
 
-config = GPTConfig(vocab_size=saved_config['vocab_size'], pad_token_id=saved_config['pad_token_id'])
+stoi = meta['stoi']
+itos = meta['itos']
+def encode(s):
+    return [stoi[c] for c in s]
+
+def decode(l):
+    return ''.join([itos[i] for i in l])
+
+config = GPTConfig(
+    vocab_size=meta["vocab_size"],
+    block_size=block_size,
+    n_layers=checkpoint["config"]["n_layers"],
+    n_heads=checkpoint["config"]["n_heads"],
+    n_embd=checkpoint["config"]["n_embd"],
+    dropout=checkpoint["config"]["dropout"],
+    start_token=stoi.get('\n', 0)
+)
+
 model = GPTLanguageModel(config).to(device)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 
-def decode(tok_ids):
-    return tokenizer.decode(tok_ids, skip_special_tokens=True)
-
 # Generate inferences
-@torch.no_grad()
-def generate_text(prompt = "", max_new_tokens = 10, temperature=1.0):
-    input_ids = tokenizer(prompt, return_tensors='pt').input_ids.to(device)
-    if input_ids.numel() == 0:
-        input_ids = torch.tensor([[tokenizer.bos_token_id]], device=device)
-    
-    output_ids = model.generate(input_ids, max_new_tokens=max_new_tokens, temperature=temperature)
-    return decode(output_ids[0])
+def generate_text(max_new_tokens = 2000, temperature=1.0):
+    output = model.generate(idx=None, max_new_tokens=max_new_tokens, temperature=temperature)[0].tolist()
+    return decode(output)
 
 if __name__ == "__main__":
-    prompt = input("Enter a prompt: ")
-    if not prompt.strip():
-        prompt = " "
     temperature = float(input("Enter temperature (default 1.0): ") or 1.0)
-    tokens = int(input("Enter number of tokens to generate (default 25): ") or 25)
+    tokens = int(input("Enter number of tokens to generate (default 200): ") or 200)
     print("Generating text...")
-    print(generate_text(prompt, max_new_tokens=tokens, temperature=temperature))
+    print(generate_text(max_new_tokens=tokens, temperature=temperature))

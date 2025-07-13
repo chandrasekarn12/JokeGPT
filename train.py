@@ -1,53 +1,23 @@
-import os, time, torch
+import os, pickle, time, math, torch
 import numpy as np
-import wandb
 from torch.nn import functional as F
-from transformers import get_linear_schedule_with_warmup
-from transformers import GPT2TokenizerFast
 import matplotlib.pyplot as plt
+import wandb
 from config import (
-    DATA_DIR, TRAIN_FILE, VAL_FILE,
-    block_size, batch_size, n_layers, n_heads, n_embd, dropout,
-    learning_rate, max_iters, eval_interval, eval_iters, patience, min_delta
+    DATA_DIR, TRAIN_FILE, VAL_FILE, META_FILE,
+    block_size, batch_size, learning_rate, max_iters, eval_interval, 
+    eval_iters, n_layers, n_heads, n_embd, dropout, patience, delta
 )
-from modelGPT1 import GPTLanguageModel, GPTConfig
+from model import GPTLanguageModel, GPTConfig
 
 if torch.cuda.is_available():
     device = 'cuda'
 else:
     device = 'cpu'
 
-# Load tokenized data and vocab
+# Load tokenized data
 train_data = np.memmap(TRAIN_FILE, dtype=np.uint16, mode='r')
 val_data = np.memmap(VAL_FILE, dtype=np.uint16, mode='r')
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
-tokenizer.pad_token = tokenizer.eos_token
-vocab = tokenizer.get_vocab()
-
-# Make model and optimizer
-config = GPTConfig(vocab_size=len(vocab), pad_token_id=tokenizer.pad_token_id)
-model = GPTLanguageModel(config).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
-scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=200, num_training_steps=max_iters)
-
-# Setup W and B
-wandb_config = {
-        'project': 'jokegpt',
-        'job_type': 'train'
-    }
-config_wandb = {
-            "block_size":   block_size,
-            "batch_size":   batch_size,
-            "n_layers":     n_layers,
-            "n_heads":      n_heads,
-            "n_embd":       n_embd,
-            "dropout":      dropout,
-            "learning_rate":learning_rate,
-            "max_iters":    max_iters,
-        }
-run = wandb.init(**wandb_config, config=config_wandb)
-wandb.watch_called = False
-wandb.watch(models=model, log='gradients', log_freq=100)
 
 def get_batch(split):
     data = train_data if split == "train" else val_data
@@ -55,12 +25,13 @@ def get_batch(split):
     x_list = []
     y_list = []
     for i in ix:
-        chunk = torch.from_numpy(data[i : i + block_size + 1].copy()).long()
-        x_list.append(chunk[:-1])
-        y_list.append(chunk[1:])
-    x = torch.stack(x_list).to(device)
-    y = torch.stack(y_list).to(device)
-    return x, y
+        x_item = torch.from_numpy(data[i : i + block_size].copy()).long()
+        y_item = torch.from_numpy(data[i + 1 : i + 1 + block_size].copy()).long()
+        x_list.append(x_item)
+        y_list.append(y_item)
+    x = torch.stack(x_list)
+    y = torch.stack(y_list)
+    return x.to(device), y.to(device)
 
 @torch.no_grad()
 def estimate_loss(model):
@@ -76,83 +47,131 @@ def estimate_loss(model):
     model.train()
     return out
 
+# Build the actual model
+with open(META_FILE, 'rb') as f:
+    meta = pickle.load(f)
+vocab_size = meta['vocab_size']
+
+config = GPTConfig(
+    vocab_size=vocab_size,
+    block_size=block_size,
+    n_layers=n_layers,
+    n_heads=n_heads,
+    n_embd=n_embd,
+    dropout=dropout,
+)
+model = GPTLanguageModel(config).to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+# Initialize run
+run = wandb.init(
+        project="jokegpt",
+        config = dict(
+            block_size   = block_size,
+            batch_size   = batch_size,
+            n_layers     = n_layers,
+            n_heads      = n_heads,
+            n_embd       = n_embd,
+            dropout      = dropout,
+            learning_rate= learning_rate,
+            max_iters    = max_iters)
+)
+wandb.watch_called = False
+wandb.watch(model, log='gradients', log_freq=100)
+
 # For plotting
 train_losses = []
 val_losses = []
 iters = []
+best_val_loss = float('inf')
+epochs_no_improve = 0
 
-best_val_loss      = float('inf')
-epochs_no_improve  = 0
+# W and B logging
+run = wandb.init(
+    project = "jokegpt",
+    name    = "gpt1_8x320_bs32",
+    config  = dict(
+        block_size=block_size, batch_size=batch_size,
+        n_layers=n_layers,   n_heads=n_heads, n_embd=n_embd,
+        dropout=dropout,     lr=learning_rate,
+        max_iters=max_iters)
+)
+wandb.watch(model, log="gradients", log_freq=100)
 
 # Training loop
 t0 = time.time()
 for iter in range(1, max_iters + 1):
+    # Get batch
     xb, yb = get_batch('train')
+
+    # Forward pass
     logits, loss = model(xb, yb)
 
+    # Backward pass
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
-    scheduler.step()
-
+        
+    if iter % 10 == 0:
+        wandb.log({
+            "train/loss": loss.item(),
+            "train/lr":   optimizer.param_groups[0]['lr'],
+            "iter":       iter
+        }, step=iter)
+    
     # Logging and eval
     if iter % eval_interval == 0:
-        # W and B
-        wandb.log({
-            "iter":       iter,
-            "train/loss": loss.item(),
-            "train/lr":   scheduler.get_last_lr()[0],
-        }, step=iter)
-
         losses = estimate_loss(model)
-        print(f"iter {iter:6d} | train loss {losses['train']:.4f} | val loss {losses['val']:.4f} | time {time.time()-t0:,.0f}s")
-        
-        wandb.log({
-            "eval/train_loss": losses['train'].item(),
-            "eval/val_loss":   losses['val'].item(),
-        }, step=iter)
-        
-        # Early stopping
-        if losses['val'] < best_val_loss - min_delta:
-            best_val_loss = losses['val']
-            epochs_no_improve = 0
 
-            # Save *best* checkpoint
-            checkpoint_path = os.path.join(DATA_DIR, 'best_checkpoint.pt')
-            torch.save({
-                'model_state_dict': model.state_dict(),
-                'config':           config.__dict__,
-                'iter':             iter,
-                'val_loss':         losses['val'],
-            }, checkpoint_path)
-            print(f"  ✓  New best; checkpoint saved to {checkpoint_path}")
+        train_loss = losses['train'].item()
+        val_loss = losses['val'].item()
+
+        print(f"iter {iter:6d} | train {train_loss:.4f} | "
+              f"val {val_loss:.4f} | time {time.time()-t0:,.0f}s")
+
+        wandb.log({
+            "eval/train_loss": train_loss,
+            "eval/val_loss":   val_loss,
+        }, step=iter)
+
+        if val_loss < best_val_loss - delta:
+            best_val_loss = val_loss
+            epochs_no_improve = 0
+            ckpt_p = os.path.join(DATA_DIR, 'best_checkpoint.pt')
+            torch.save({'model_state_dict': model.state_dict(),
+                        'config': config.__dict__,
+                        'iter': iter,
+                        'val_loss': val_loss}, ckpt_p)
+            print(f"  ✓  New best checkpoint saved to {ckpt_p}")
+
+            # push artifact every new best
+            art = wandb.Artifact('model', type='checkpoint')
+            art.add_file(ckpt_p)
+            run.log_artifact(art, aliases=['best', f'iter_{iter}'])
         else:
             epochs_no_improve += 1
-            print(f"  └─ no improv. for {epochs_no_improve}/{patience}")
-
             if epochs_no_improve >= patience:
                 print(f"\nEarly stopping at iter {iter} "
-                    f"(best val loss {best_val_loss:.4f}).")
+                      f"(best val loss {best_val_loss:.4f})")
                 break
 
-        if iter % (5 * eval_interval) == 0:
-            # Push to W and B
-            artifact = wandb.Artifact('model', type='checkpoint')
-            artifact.add_file(checkpoint_path)
-            run.log_artifact(artifact, aliases=[f"iter_{iter}"])
-
+        # Store losses for plotting
         train_losses.append(losses['train'].item())
         val_losses.append(losses['val'].item())
         iters.append(iter)
 
+# Final checkpoint
 final_checkpoint_path = os.path.join(DATA_DIR, 'checkpoint.pt')
 torch.save({
     'model_state_dict': model.state_dict(),
     'config': config.__dict__,
+    'meta': meta
 }, final_checkpoint_path)
 print(f"Final model checkpoint saved to {final_checkpoint_path}")
+
 run.finish()
 
+# Plot losses
 plt.figure()
 plt.plot(iters, train_losses, label='Train Loss')
 plt.plot(iters, val_losses, label='Val Loss')
@@ -163,3 +182,6 @@ plt.legend()
 plt.grid()
 plt.savefig(os.path.join(DATA_DIR, 'loss_curve.png'))
 plt.show()
+
+# optional shutdown
+#os.system("shutdown /s /t 1")

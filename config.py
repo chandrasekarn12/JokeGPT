@@ -2,27 +2,21 @@
 DATA_DIR = "data"
 TRAIN_FILE = f"{DATA_DIR}/train.bin"
 VAL_FILE = f"{DATA_DIR}/val.bin"
+META_FILE = f"{DATA_DIR}/meta.pkl"
+JOKES_CSV = f"{DATA_DIR}/dad_jokes.csv"
 
 # GPT model parameters
-block_size = 256
-batch_size = 32
-n_layers = 8
-n_heads = 8
-n_embd = 512
+block_size = 128
+batch_size = 64
+n_layers = 6
+n_heads = 6
+n_embd = 192
 dropout = 0.1
-# block_size = 512
-# batch_size = 64
-# n_layers = 12
-# n_heads = 12
-# n_embd = 768
-# dropout = 0.1
 
 # Training parameters
-learning_rate = 0.003
-max_iters = 10000
-eval_interval = 200
-eval_iters = 40
-
-# Early stopping
-patience = 10
-min_delta = 0.0005
+learning_rate = 0.0005
+max_iters = 20000
+eval_interval = 500
+eval_iters = 10
+patience = 6
+delta = 0.0005
