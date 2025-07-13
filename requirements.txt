@@ -1,8 +1,2 @@
-torch==2.5.0+cpu
---extra-index-url https://download.pytorch.org/whl/cpu
-
-numpy<2
-fastapi
-uvicorn
+torch
 streamlit
-requests

@@ -29,6 +29,3 @@ Thumbs.db
 # Git folders and logs
 .git/
 *.swp
-
-# Ignore containers
-containers/
