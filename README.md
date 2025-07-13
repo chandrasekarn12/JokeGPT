@@ -2,43 +2,37 @@
 
 Minimal GPT‑style model that spits out painfully wholesome dad jokes.
 
-[![Render](https://img.shields.io/badge/Live%20API-Render-green)](https://jokegpt-ui.onrender.com/health)
+[![HuggingFace Space](https://img.shields.io/badge/Live%20Demo-HuggingFace-blue)](https://huggingface.co/spaces/nikhchand04/JokeGPT)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## 🌐 Live Demo
+## 🌐 Live Demo
 
 | Component | URL |
 |-----------|-----|
-| **API**   | https://jokegpt-api.onrender.com |
-| **UI**    | https://jokegpt-ui.onrender.com |
+| **JokeGPT Space** | [huggingface.co/spaces/chandrasekarn12/JokeGPT](https://huggingface.co/spaces/nikhchand04/JokeGPT) |
 
-Clone → run locally → or click the links above to try instantly.
+Try it out directly in the browser — no installs, no hassle (may be slow because running on free tier).
 
 ---
 
-## 🏃‍♂️ Quick Start (Local)
+## 🏃‍♂️ Quick Start (Local)
 
 ```bash
-# 1. Clone & create venv
-$ git clone https://github.com/<your‑handle>/JokeGPT && cd JokeGPT
+# 1. Clone & create venv
+$ git clone https://github.com/chandrasekarn12/JokeGPT && cd JokeGPT
 $ python -m venv .venv && source .venv/bin/activate
 $ pip install -r requirements.txt
 
-# 2. Prepare data (tokenises reddit_dadjokes.csv)
+# 2. Prepare data (tokenises dad_jokes.csv)
 $ python prepare_tokenizer_data.py
 
-# 3. Train a tiny model (fits CPU)
-$ python train.py           # creates data/checkpoint.pt
+# 3. Train the model (fits CPU)
+$ python train.py
 
-# 4. Generate joke
-$ python generate.py        # interactive prompt
-
-# 5. Run API + UI
-$ uvicorn app:app --port 8000 &               # terminal 1   (API)
-$ BACKEND_URL=http://localhost:8000 \
-      streamlit run demo.py --server.fileWatcherType none   # terminal 2 (UI)
+# 4. Generate joke (CLI)
+$ python generate.py
 ```
 
 ---
@@ -86,20 +80,19 @@ $ gcloud run deploy jokegpt-api --image us-central1-docker.pkg.dev/<PROJECT>/jok
 
 ```
 .
-├── app.py                 # FastAPI server
-├── demo.py                # Streamlit UI (calls API)
-├── modelGPT2.py           # Tiny GPT‑2‑style model
-├── train.py               # Training loop
-├── generate.py            # Text generation script
-├── fastapi.dockerfile     # Container for API
-├── streamlit.dockerfile   # Container for UI
-└── data/ checkpoint.pt …  # Model + tokeniser cache
+JokeGPT/
+├── data/ # ✓ Training CSVs + final model weights
+│ ├── dad_jokes.csv
+|  └── checkpoint.pt
+├── src/
+│ ├── model.py # GPT-1-like transformer
+│ ├── train.py # Training loop
+│ ├── generate.py # CLI text generation
+| ├── config.py # Model config info
+│ └── app.py # Final streamlit UI
+├── Old_versions/ # Old code that can be explored and functions (not maintained)
+│ |── deployment/ # Deploying containerized version with FastAPI, Streamlit, and Docker
+| ├── GPT2/ # Overly complicated GPT-2
+| ├── Old_GPT1/ # Overly complicated GPT-1
+└── README.md
 ```
-
----
-
-## 🛣️ Roadmap
-1. **Quantisation (bitsandbytes)** – cut latency & memory.
-2. **Weights‑and‑Biases logging** – experiment tracking.
-3. **GitHub Actions CI/CD** – auto‑publish new images.
-4. **Better dataset filtering** – knock out low‑quality jokes.
